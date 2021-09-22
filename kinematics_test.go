@@ -1,15 +1,48 @@
 package kinematics
 
 import (
-	"math/rand"
-	"testing"
-
 	"gonum.org/v1/gonum/mat"
+	"testing"
 )
 
+func TestApproxEquals(t *testing.T) {
+	p0 := Position{1, 2, 3}
+	p1 := Position{1 + 1.1e-6, 2 - 3e-7, 3 + 2.45e-6}
+	tol := 1e-5
+	if !p0.approxEqual(p1, tol) {
+		t.Errorf("approxEqual failed at tol %f with p0: %+v, p1: %+v", tol, p0, p1)
+	}
+	tol = 1e-6
+	if p0.approxEqual(p1, tol) {
+		t.Errorf("approxEqual failed at tol %f with p0: %+v, p1: %+v", tol, p0, p1)
+	}
+
+	q0 := Quaternion{1, 2, 3, 4}
+	q1 := Quaternion{-1, -2, -3, -4}
+	if !q0.approxEqual(q1, tol) {
+		t.Errorf("approxEqual failed for negative quaternions q0: %+v, q1: %+v", q0, q1)
+	}
+
+	tol = 1e-5
+	q1 = Quaternion{-1 + 2.345e-6, -2 - 4.3e-7, -3 + 2e-6, -4}
+	if !q0.approxEqual(q1, tol) {
+		t.Errorf("approxEqual failed for close negative quaternions q0: %+v, q1: %+v", q0, q1)
+	}
+	q1 = Quaternion{1 + 2.345e-6, 2 - 4.3e-7, 3 + 2e-6, 4}
+	if !q0.approxEqual(q1, tol) {
+		t.Errorf("approxEqual failed for close quaternions q0: %+v, q1: %+v", q0, q1)
+	}
+
+	tol = 1e-7
+	q1 = Quaternion{1 + 2.345e-6, 2 - 4.3e-7, 3 + 2e-6, 4}
+	if q0.approxEqual(q1, tol) {
+		t.Errorf("approxEqual failed for close quaternions q0: %+v, q1: %+v", q0, q1)
+	}
+}
+
 func TestForwardKinematics(t *testing.T) {
-	testThetas := JointAngles{10, 1, 1, 0, 0, 0}
-	f := ForwardKinematics(testThetas, AR3DhParameters)
+	testThetas := []float64{10, 1, 1, 0, 0, 0}
+	f := ForwardKinematics(testThetas, SixDOFDhParameters)
 	switch {
 	case f.Position.X != -101.74590611879692:
 		t.Errorf("Forward kinematics failed on f.Position.X = %f", f.Position.X)
@@ -29,7 +62,7 @@ func TestForwardKinematics(t *testing.T) {
 }
 
 func TestInverseKinematics(t *testing.T) {
-	thetasInit := JointAngles{0, 0, 0, 0, 0, 0}
+	thetasInit := []float64{0, 0, 0, 0, 0, 0}
 	desiredEndEffector := Pose{
 		Position{
 			-91.72345062922584,
@@ -40,7 +73,7 @@ func TestInverseKinematics(t *testing.T) {
 			X: 0.4007833787652043,
 			Y: -0.021233218878182854,
 			Z: 0.9086418268616911}}
-	_, err := InverseKinematics(desiredEndEffector, AR3DhParameters, thetasInit)
+	_, err := InverseKinematics(desiredEndEffector, SixDOFDhParameters, thetasInit)
 	if err != nil {
 		t.Errorf("Inverse Kinematics failed with error: %s", err)
 	}
@@ -55,13 +88,34 @@ func TestInverseKinematics(t *testing.T) {
 			X: 0.4007833787652043,
 			Y: -0.021233218878182854,
 			Z: 0.9086418268616911}}
-	_, err = InverseKinematics(desiredEndEffector, AR3DhParameters, thetasInit)
+	_, err = InverseKinematics(desiredEndEffector, SixDOFDhParameters, thetasInit)
 	if err == nil {
 		t.Errorf("Inverse Kinematics should have failed with large X")
 	}
 }
 
-func TestMatrixToQuaterion(t *testing.T) {
+func TestInverseKinematicsSevenDOF(t *testing.T) {
+	thetasInit := []float64{0, 0, 0, 0, 0, 0, 0}
+
+	thetasTarg := []float64{0, 0, 0, 0, 0, 0, 0}
+	for i := range thetasTarg {
+		thetasTarg[i] = RandTheta() * 0.1
+	}
+	pTarg := ForwardKinematics(thetasTarg, SevenDOFDhParameters)
+
+	thetasSolve, err := InverseKinematics(pTarg, SevenDOFDhParameters, thetasInit)
+	if err != nil {
+		t.Errorf("Inverse Kinematics failed with error: %s", err)
+	}
+	pSolve := ForwardKinematics(thetasSolve, SevenDOFDhParameters)
+
+	if !pSolve.approxEqual(pTarg, 1e-3) {
+		t.Errorf("Inverse Kinematics didn't arrive at the correct"+
+			" solution: %+v", pSolve)
+	}
+}
+
+func TestmatrixToQuaterion(t *testing.T) {
 	var q Quaternion
 
 	// Test tr > 0
@@ -139,20 +193,18 @@ func TestMatrixToQuaterion(t *testing.T) {
 }
 
 func BenchmarkInverseKinematics(b *testing.B) {
-	thetasInit := JointAngles{0, 0, 0, 0, 0, 0}
-	randTheta := func() float64 {
-		return 360 * rand.Float64()
-	}
+	thetasInit := []float64{0, 0, 0, 0, 0, 0}
+
 	for i := 0; i < b.N; i++ {
-		randomSeed := JointAngles{randTheta(), randTheta(), randTheta(),
-			randTheta(), randTheta(), randTheta()}
-		desiredEndEffector := ForwardKinematics(randomSeed, AR3DhParameters)
-		_, err := InverseKinematics(desiredEndEffector, AR3DhParameters, thetasInit)
+		randomSeed := []float64{RandTheta(), RandTheta(), RandTheta(),
+			RandTheta(), RandTheta(), RandTheta()}
+		desiredEndEffector := ForwardKinematics(randomSeed, SixDOFDhParameters)
+		_, err := InverseKinematics(desiredEndEffector, SixDOFDhParameters, thetasInit)
 		if err != nil {
 			b.Errorf("Failed inverse kinematics benchmark with: %s\nSeed:"+
-				" %f-%f-%f-%f-%f-%f", err, randomSeed.J1, randomSeed.J2,
-				randomSeed.J3, randomSeed.J4,
-				randomSeed.J5, randomSeed.J6)
+				" %f-%f-%f-%f-%f-%f", err,
+				randomSeed[0], randomSeed[1], randomSeed[2],
+				randomSeed[3], randomSeed[4], randomSeed[5])
 		}
 	}
 }
