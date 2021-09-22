@@ -115,7 +115,7 @@ func TestInverseKinematicsSevenDOF(t *testing.T) {
 	}
 }
 
-func TestmatrixToQuaterion(t *testing.T) {
+func TestMatrixToQuaterion(t *testing.T) {
 	var q Quaternion
 
 	// Test tr > 0
