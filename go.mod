@@ -1,4 +1,4 @@
-module github.com/koeng101/kinematics
+module github.com/trilobio/kinematics
 
 go 1.17
 

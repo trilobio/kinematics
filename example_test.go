@@ -2,7 +2,7 @@ package kinematics_test
 
 import (
 	"fmt"
-	"github.com/koeng101/kinematics"
+	"github.com/trilobio/kinematics"
 )
 
 func ExampleForwardKinematics() {
