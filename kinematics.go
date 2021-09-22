@@ -55,17 +55,18 @@ type Pose struct {
 	Rotation Quaternion
 }
 
-// ApproxEqual checks if this Quaternion is approximately equal to another
+// approxEqual checks if this Quaternion is approximately equal to another
 // Quaternion. This checks the positive and negative Quaternion (which are
 // equivalent).
-func (quatA Quaternion) ApproxEqual(quatB Quaternion, tol float64) bool {
+func (quatA Quaternion) approxEqual(quatB Quaternion, tol float64) bool {
 	isEqual := false
 	if (math.Abs(quatA.X-quatB.X) < tol) &&
 		(math.Abs(quatA.Y-quatB.Y) < tol) &&
 		(math.Abs(quatA.Z-quatB.Z) < tol) &&
 		(math.Abs(quatA.W-quatB.W) < tol) {
 		isEqual = true
-	} else if (math.Abs(quatA.X+quatB.X) < tol) &&
+	}
+	if (math.Abs(quatA.X+quatB.X) < tol) &&
 		(math.Abs(quatA.Y+quatB.Y) < tol) &&
 		(math.Abs(quatA.Z+quatB.Z) < tol) &&
 		(math.Abs(quatA.W+quatB.W) < tol) {
@@ -74,8 +75,8 @@ func (quatA Quaternion) ApproxEqual(quatB Quaternion, tol float64) bool {
 	return isEqual
 }
 
-// ApproxEqual checks if two Positions are approximately equal.
-func (posA Position) ApproxEqual(posB Position, tol float64) bool {
+// approxEqual checks if two Positions are approximately equal.
+func (posA Position) approxEqual(posB Position, tol float64) bool {
 	isEqual := false
 	if math.Abs(posA.X-posB.X) < tol && math.Abs(posA.Y-posB.Y) < tol &&
 		math.Abs(posA.Z-posB.Z) < tol {
@@ -84,10 +85,10 @@ func (posA Position) ApproxEqual(posB Position, tol float64) bool {
 	return isEqual
 }
 
-// ApproxEqual checks if two Poses are approximately equal.
-func (poseA Pose) ApproxEqual(poseB Pose, tol float64) bool {
-	return poseA.Pos.ApproxEqual(poseB.Pos, tol) &&
-		poseA.Rot.ApproxEqual(poseB.Rot, tol)
+// approxEqual checks if two Poses are approximately equal.
+func (poseA Pose) approxEqual(poseB Pose, tol float64) bool {
+	return poseA.Position.approxEqual(poseB.Position, tol) &&
+		poseA.Rotation.approxEqual(poseB.Rotation, tol)
 }
 
 // RandTheta creates a random value from -pi to pi
